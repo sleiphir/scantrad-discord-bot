@@ -10,7 +10,7 @@ const Fuse = require('fuse.js')
 const Parser = require('rss-parser');
 const parser = new Parser();
 const client = new Discord.Client();
-const pollrate = 5000; // frequency in seconds at which the RSS is checked
+const pollrate = 30000; // frequency in seconds at which the RSS is checked
 const RSS_URL = 'https://scantrad.net/rss/';
 const CMD = "!";
 const feed = new Map();
@@ -243,7 +243,6 @@ function waitForUserInput(context, user, result, callback) {
             if (message.content.match(/\d/g).join('') === message.content && parseInt(message.content) <= choices.length) {
                 if (parseInt(message.content) !== 0) {
                     candidate = result[parseInt(message.content) - 1].item;
-                    console.log(`${user} |  ${candidate}`);
                     callback(context, user, candidate)
                 }
                 msg.delete();
@@ -265,13 +264,16 @@ function waitForUserInput(context, user, result, callback) {
 }
 
 async function updateFeed() {
+    const start = new Date();
     const rss = await parser.parseURL(RSS_URL);
-    processFeed(rss.items);
+    const end = new Date();
+    const fetchTime = end - start;
+    processFeed(rss.items, fetchTime);
 }
 
-async function processFeed(items) {
+async function processFeed(items, fetchTime) {
     let i = 0;
-    while (i < items.length && (new Date() - new Date(items[i].isoDate) - pollrate) < 0) {
+    while (i < items.length && (new Date() - new Date(items[i].isoDate) - (pollrate + fetchTime)) <= 0) {
         sendNotifications(items[i])
         i++;
     }
@@ -312,6 +314,5 @@ function setFeedChannelId(context, author, id, isAdmin) {
 
 setInterval(updateMangaList, 86400);
 setInterval(updateFeed, pollrate);
-
 
 client.login(TOKEN);
