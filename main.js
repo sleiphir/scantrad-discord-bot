@@ -14,13 +14,13 @@ const pollrate = 5000; // frequency in seconds at which the RSS is checked
 const RSS_URL = 'https://scantrad.net/rss/';
 const CMD = "!";
 const feed = new Map();
-let CHANNEL_ID = '';
-let mangas = [];
 const fuseOptions = {
     includeScore: true,
     shouldSort: true,
     threshold: 0.2
 }
+let CHANNEL_ID = '';
+let mangas = [];
 
 async function fetchHTML(url) {
     const { data } = await axios.get(url)
@@ -59,6 +59,7 @@ function loadFromDatabase() {
     json.data.forEach(manga => {
         feed.set(manga.mangaTitle, manga.usersSubscriptions);
     });
+    CHANNEL_ID = json.channel_id
 }
 
 function updateDB() {
@@ -70,6 +71,7 @@ function updateDB() {
             usersSubscriptions: users
         });
     });
+    json.channel_id = CHANNEL_ID;
     fs.writeFileSync('db.json', JSON.stringify(json));
 }
 
@@ -82,20 +84,19 @@ client.on('ready', () => {
 
 client.on('message', async msg => {
     if (msg.content.startsWith(CMD)) {
-        const isAdmin = msg.member.hasPermission("ADMINISTRATOR")
-        processUserInput(msg, msg.content.substr(1,msg.content.length-1), msg.author, isAdmin);
+        processUserInput(msg, msg.content.substr(1,msg.content.length-1), msg.author);
     }
 });
 
-function processUserInput(context, input, author, isAdmin) {
+function processUserInput(context, input, author) {
     const args = input.split(' ');
     const user = author.id;
     const command = args.shift();
-    const manga = args.join(' ');
+    const content = args.join(' ');
     
     switch(command) {
         case "setFeedChannel":
-        setFeedChannelId(context, author, manga.match(/\d/g).join(''), isAdmin);
+        setFeedChannelId(context, author, content.match(/\d/g).join(''), context.member.hasPermission("ADMINISTRATOR"));
         break;
         case "help":
         showHelper(context);
@@ -107,13 +108,13 @@ function processUserInput(context, input, author, isAdmin) {
         case "add":
         case "sub":
         case "subscribe":
-        processSubscription(context, user, manga)
+        processSubscription(context, user, content)
         break;
         case "unfollow":
         case "remove":
         case "unsub":
         case "unsubscribe":
-        processUnsubscription(context, user, manga);
+        processUnsubscription(context, user, content);
         break;
     }
 }
@@ -158,11 +159,11 @@ function processSubscription(context, user, manga) {
         // Perfect match
         if (result[0].score === 0) {
             subscribe(context, user, result[0].item);
-        // Partial matches
+            // Partial matches
         } else if (result[0]) {
             waitForUserInput(context, user, result, subscribe);
         }
-    // No match
+        // No match
     } else {
         context.reply(`nothing matching '${manga}' found.`)
     }
@@ -180,11 +181,11 @@ function processUnsubscription(context, user, manga) {
         // Perfect match
         if (result[0].score === 0) {
             unsubscribe(context, user, result[0].item);
-        // Partial matches
+            // Partial matches
         } else {
             waitForUserInput(context, user, result, unsubscribe);
         }
-    // No match
+        // No match
     } else {
         context.reply(`nothing matching '${manga}' found.`)
     }
@@ -270,42 +271,40 @@ async function updateFeed() {
 
 async function processFeed(items) {
     let i = 0;
-    while ((new Date() - new Date(items[i].isoDate)) - (pollrate * 1000) < 0) {
+    while (i < items.length && (new Date() - new Date(items[i].isoDate) - pollrate) < 0) {
+        sendNotifications(items[i])
         i++;
-    }
-    if (i > 0) {
-        sendNotifications(items.slice(0, i));
     }
 }
 
-async function sendNotifications(news) {
-    news.forEach(item => {
-        // Manga Title
-        const manga = item.title.replace('Scan - ', '').split(' Chapitre')[0];
-        let userList = '';
-        getMangaFollowList(manga).forEach(user => {
-            userList += `<@${user}> `
-        });
-        if (userList !== '') {
-            const channel = client.channels.cache.get(CHANNEL_ID);
-            const image = item.content.split("img src=")[1].split('"')[1]
-            const embed = new Discord.MessageEmbed();
-            embed
-            .setColor("#f05a28")
-            .setTitle(item.title)
-            .setDescription(item.contentSnippet)
-            .setImage(image)
-            .setURL(item.link)
-            channel.send(userList)
-            channel.send(embed);
-        }
-    })
+async function sendNotifications(item) {
+    if (!CHANNEL_ID) return;
+    // Manga Title
+    const manga = item.title.replace('Scan - ', '').split(' Chapitre')[0];
+    let userList = '';
+    getMangaFollowList(manga).forEach(user => {
+        userList += `<@${user}> `
+    });
+    if (userList !== '') {
+        const channel = client.channels.cache.get(CHANNEL_ID);
+        const image = item.content.split("img src=")[1].split('"')[1]
+        const embed = new Discord.MessageEmbed();
+        embed
+        .setColor("#f05a28")
+        .setTitle(item.title)
+        .setDescription(item.contentSnippet)
+        .setImage(image)
+        .setURL(item.link)
+        channel.send(userList)
+        channel.send(embed);
+    }
 }
 
 function setFeedChannelId(context, author, id, isAdmin) {
     if (isAdmin) {
         CHANNEL_ID = id;
         context.reply(`notifications will now be posted in <#${id}>.`)
+        updateDB();
     } else {
         context.reply(`you don't have the permission to change the channel.`)
     }
