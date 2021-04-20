@@ -4,7 +4,7 @@
   "description": "",
   "main": "main.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node main.js"
   },
   "keywords": [],
   "author": "",
@@ -16,7 +16,9 @@
     "discord.js": "^12.5.3",
     "dotenv": "^8.2.0",
     "fs": "0.0.1-security",
+    "fuse.js": "^6.4.6",
     "node-fetch": "^2.6.1",
+    "nodemon": "^2.0.7",
     "rss-parser": "^3.12.0"
   }
 }

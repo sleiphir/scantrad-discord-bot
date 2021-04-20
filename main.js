@@ -6,6 +6,7 @@ const fs = require('fs');
 const axios = require('axios');
 const cheerio = require('cheerio');
 const Discord = require('discord.js')
+const Fuse = require('fuse.js')
 const Parser = require('rss-parser');
 const parser = new Parser();
 const client = new Discord.Client();
@@ -15,6 +16,11 @@ const CMD = "!";
 const feed = new Map();
 let CHANNEL_ID = '';
 let mangas = [];
+const fuseOptions = {
+    includeScore: true,
+    shouldSort: true,
+    threshold: 0.2
+}
 
 async function fetchHTML(url) {
     const { data } = await axios.get(url)
@@ -33,41 +39,45 @@ async function getMangas() {
 
 async function updateMangaList() {
     mangas = await getMangas();
-    let rawdata = fs.readFileSync('db.json');
-    let json = JSON.parse(rawdata);
-
-    const mangaJson = json.data.map(manga => manga.mangaTitle);
     
-    if (mangaJson !== mangas) {
-        const res = mangas.filter(manga => !mangaJson.includes(manga));
-        res.forEach(manga => {
-            json.data.push({
-                mangaTitle: manga,
-                usersSubscriptions: []
-            });
-        })
-        console.log(json);
-        let data = JSON.stringify(json);
-        fs.writeFileSync('db.json', data);
+    let updated = false;
+    mangas.forEach(manga => {
+        if (!feed.has(manga)) {
+            feed.set(manga, [])
+            updated = true;
+        }
+    });
+    
+    if (updated) {
+        updateDB();
     }
-}   
+}
 
 function loadFromDatabase() {
     let rawdata = fs.readFileSync('db.json');
     let json = JSON.parse(rawdata);
     json.data.forEach(manga => {
         feed.set(manga.mangaTitle, manga.usersSubscriptions);
-    })
+    });
 }
 
-setInterval(updateMangaList, 86400);
+function updateDB() {
+    console.log("\x1b[33m%s\x1b[0m", 'DB updated');
+    const json = { data: [] };
+    feed.forEach((users, manga) => {
+        json.data.push({
+            mangaTitle: manga,
+            usersSubscriptions: users
+        });
+    });
+    fs.writeFileSync('db.json', JSON.stringify(json));
+}
 
 client.on('ready', () => {
     console.log(`Logged in as ${client.user.tag}!`);
     client.user.setActivity("One Piece", { type: "WATCHING"});
-    updateMangaList();
     loadFromDatabase();
-    console.log(feed)
+    updateMangaList();
 });
 
 client.on('message', async msg => {
@@ -82,29 +92,29 @@ function processUserInput(context, input, author, isAdmin) {
     const user = author.id;
     const command = args.shift();
     const manga = args.join(' ');
-
+    
     switch(command) {
         case "setFeedChannel":
-            setFeedChannelId(context, author, manga.replace('<#', '').replace('>', ''), isAdmin);
-            break;
+        setFeedChannelId(context, author, manga.match(/\d/g).join(''), isAdmin);
+        break;
         case "help":
-            showHelper(context);
-            break;
+        showHelper(context);
+        break;
         case "list":
-            showUserFollowList(context, user);
-            break;
+        showUserFollowList(context, user);
+        break;
         case "follow":
         case "add":
         case "sub":
         case "subscribe":
-            subscribe(context, user, manga)
-            break;
+        processSubscription(context, user, manga)
+        break;
         case "unfollow":
         case "remove":
         case "unsub":
         case "unsubscribe":
-            unsubscribe(context, user, manga);
-            break;
+        processUnsubscription(context, user, manga);
+        break;
     }
 }
 
@@ -114,7 +124,11 @@ function showHelper(context) {
 
 function showUserFollowList(context, user) {
     const list = getUserFollowList(user);
-    context.reply(`${list}`);
+    if (list) {
+        context.reply(`${list.join(', ')}`);
+    } else {
+        context.reply(`you don't follow anyting yet.`)
+    }
 }
 
 function getUserFollowList(user) {
@@ -137,12 +151,53 @@ function getMangaFollowList(manga) {
     return list;
 }
 
-function subscribe(context, user, manga) {
-    subscribeUserToFeed(user, manga);
-    if (feed.get(manga).includes(user)) {
-        context.reply(`started following ${manga}.`)
+function processSubscription(context, user, manga) {
+    const fuse = new Fuse(mangas, fuseOptions)
+    const result = fuse.search(manga)
+    if (result[0]) {
+        // Perfect match
+        if (result[0].score === 0) {
+            subscribe(context, user, result[0].item);
+        // Partial matches
+        } else if (result[0]) {
+            waitForUserInput(context, user, result, subscribe);
+        }
+    // No match
     } else {
-        context.reply(`error, ${manga} was not added to your follow list.`)
+        context.reply(`nothing matching '${manga}' found.`)
+    }
+}
+
+function processUnsubscription(context, user, manga) {
+    const list = getUserFollowList(user);
+    if (list.length === 0) {
+        context.reply('your follow list is empty.');
+        return;
+    }
+    const fuse = new Fuse(list, fuseOptions)
+    const result = fuse.search(manga)
+    if (result[0]) {
+        // Perfect match
+        if (result[0].score === 0) {
+            unsubscribe(context, user, result[0].item);
+        // Partial matches
+        } else {
+            waitForUserInput(context, user, result, unsubscribe);
+        }
+    // No match
+    } else {
+        context.reply(`nothing matching '${manga}' found.`)
+    }
+}
+
+function subscribe(context, user, manga) {
+    if (feed.get(manga).includes(user)) {
+        context.reply(`you already follow ${manga}.`)
+    } else {
+        subscribeUserToFeed(user, manga);
+        if (feed.get(manga).includes(user)) {
+            context.reply(`started following ${manga}.`)
+        }
     }
 }
 
@@ -160,15 +215,52 @@ function subscribeUserToFeed(username, manga) {
         if (!feed.get(manga).includes(username)) {
             feed.set(manga, [username, ...feed.get(manga)])
         }
-    } else {
-        feed.set(manga, [username]);
+        updateDB();
     }
 }
 
 function unsubscribeUserFromFeed(username, manga) {
     if (feed.get(manga).includes(username)) {
         feed.set(manga, [...feed.get(manga).filter(elem => elem !== username)]);
+        updateDB();
     }
+}
+
+function waitForUserInput(context, user, result, callback) {
+    choices = result.map((elem, idx) => { return `[${idx+1}] ${elem.item}`});
+    const filter = m => m.author.id === user;
+    context.channel.send(`\`\`\`ml\n${choices.join('\n')}\n\n[0] Cancel\`\`\`\n\`\`\`Type the [number] of your choice in response\`\`\``)
+    .then(msg => {
+        context.channel.awaitMessages(filter, {
+            max: 1,
+            time: 30000,
+            errors: ['time']
+        })
+        .then(message => {
+            message = message.first()
+            // The response is a number
+            if (message.content.match(/\d/g).join('') === message.content && parseInt(message.content) <= choices.length) {
+                if (parseInt(message.content) !== 0) {
+                    candidate = result[parseInt(message.content) - 1].item;
+                    console.log(`${user} |  ${candidate}`);
+                    callback(context, user, candidate)
+                }
+                msg.delete();
+                message.delete();
+                
+            } else {
+                context.channel.send(`Invalid Response`).then(message => {
+                    msg.delete();
+                    message.delete({ timeout: 3000 })
+                });
+            }
+        })
+        .catch(collected => {
+            context.channel.send('Timeout').then(message => {
+                message.delete({ timeout: 3000 })
+            });
+        });
+    });
 }
 
 async function updateFeed() {
@@ -199,11 +291,11 @@ async function sendNotifications(news) {
             const image = item.content.split("img src=")[1].split('"')[1]
             const embed = new Discord.MessageEmbed();
             embed
-                .setColor("#f05a28")
-                .setTitle(item.title)
-                .setDescription(item.contentSnippet)
-                .setImage(image)
-                .setURL(item.link)
+            .setColor("#f05a28")
+            .setTitle(item.title)
+            .setDescription(item.contentSnippet)
+            .setImage(image)
+            .setURL(item.link)
             channel.send(userList)
             channel.send(embed);
         }
@@ -213,15 +305,14 @@ async function sendNotifications(news) {
 function setFeedChannelId(context, author, id, isAdmin) {
     if (isAdmin) {
         CHANNEL_ID = id;
-        context.reply(`notifications will now be posted in <#${id}>`)
+        context.reply(`notifications will now be posted in <#${id}>.`)
     } else {
         context.reply(`you don't have the permission to change the channel.`)
     }
-    updateFeed();
 }
 
-//setInterval(updateFeed, pollrate);
+setInterval(updateMangaList, 86400);
+setInterval(updateFeed, pollrate);
 
 
 client.login(TOKEN);
-
