@@ -15,24 +15,28 @@ export class UnsubscriptionCommand extends Command {
 
     async execute() {
         const db = new DB();
-        const list = await db.getUserFollowList(this.context.guild.id, this.context.author.id)
-        const format = list.map(elem => elem.mangaTitle);
-        const fuse = new Fuse(format, fuse_options)
-        const result = fuse.search(this._manga)
-        if (result[0]) {
-            // Perfect match
-            if (result[0].score === 0) {
-                db.unsubscribe(this.context, result[0].item as any);
-            // Partial matches
-            } else if (result[0]) {
-                AskUserChoice.send(this.context, result, (candidate) => {
-                    console.info(`${this.context.author.username} unfollowed '${candidate}'`)
-                    db.unsubscribe(this.context, candidate)
-                })
+        const list = await db.getUserFollowList(this.context.guild.id, this.context.author.id);
+        if (list) {
+            const format = list.map(elem => elem.mangaTitle);
+            const fuse = new Fuse(format, fuse_options)
+            const result = fuse.search(this._manga)
+            if (result[0]) {
+                // Perfect match
+                if (result[0].score === 0) {
+                    db.unsubscribe(this.context, result[0].item as any);
+                // Partial matches
+                } else if (result[0]) {
+                    AskUserChoice.send(this.context, result, (candidate) => {
+                        console.info(`${this.context.author.username} unfollowed '${candidate}'`)
+                        db.unsubscribe(this.context, candidate)
+                    })
+                }
+            // No match
+            } else {
+                this.context.reply(`nothing matching '${this._manga}' found.`)
             }
-        // No match
         } else {
-            this.context.reply(`nothing matching '${this._manga}' found.`)
+            this.context.reply(`you don't follow anything yet`)
         }
     }
 }

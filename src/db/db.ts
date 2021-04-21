@@ -82,26 +82,26 @@ export class DB {
 
         await prisma.$transaction(
             mangas.map(cur =>
-              prisma.manga.upsert({
-                where: { title: cur },
-                update: {},
-                create: { title: cur },
-              })
+                prisma.manga.upsert({
+                    where: { title: cur },
+                    update: {},
+                    create: { title: cur },
+                })
             )
-          );
+        );
     }
 
     async getUserFollowUnique(guild: string, user: string, manga: string) {
-        return await prisma.notification.findMany({
+        return await prisma.user.findUnique({
+            where: { id: user },
             include: {
-                users: {
-                    where: { id: user }
+                Notification: {
+                    where: {
+                        AND: [{ guildId: guild }, { mangaTitle: manga }]
+                    }
                 }
             },
-            where: { 
-                AND: [{ guildId: guild }, { mangaTitle: manga }]
-            }
-        })
+        });
     }
 
     async subscribe(context: Message, manga: string) {
@@ -109,9 +109,9 @@ export class DB {
         const guild = context.guild.id;
 
         // Check if the notification already exists for this user
-        const notification = await this.getUserFollowUnique(guild, user, manga);
+        const _user = await this.getUserFollowUnique(guild, user, manga);
 
-        if (notification.length > 0) {
+        if (_user.Notification?.length > 0) {
             context.reply(`you already follow ${manga}.`);
             return;
         }
@@ -146,19 +146,21 @@ export class DB {
         const user = context.author.id;
         const guild = context.guild.id;
 
-        const notifications = await this.getUserFollowUnique(guild, user, manga);
+        const _user = await this.getUserFollowUnique(guild, user, manga);
 
-        if (notifications.length === 0) {
+        if (_user.Notification?.length === 0) {
             context.reply(`you don't follow ${manga}.`);
             return;
         }
 
         // Deletes every corresponding notifications
-        notifications.forEach(async elem => {
-            await prisma.notification.deleteMany({
-                where: { id: elem.id },
-            });
-        })
+        await prisma.$transaction(
+            _user.Notification.map(cur =>
+                prisma.notification.delete({
+                    where: { id: cur.id }
+                })
+            )
+        );
 
         context.reply(`unfollowed ${manga}`);
     }
