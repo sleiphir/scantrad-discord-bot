@@ -111,7 +111,7 @@ export class DB {
         // Check if the notification already exists for this user
         const _user = await this.getUserFollowUnique(guild, user, manga);
 
-        if (_user.Notification?.length > 0) {
+        if (_user?.Notification?.length > 0) {
             context.reply(`you already follow ${manga}.`);
             return;
         }
@@ -148,7 +148,7 @@ export class DB {
 
         const _user = await this.getUserFollowUnique(guild, user, manga);
 
-        if (_user.Notification?.length === 0) {
+        if (_user?.Notification?.length === 0) {
             context.reply(`you don't follow ${manga}.`);
             return;
         }
