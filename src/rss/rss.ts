@@ -46,6 +46,7 @@ export class RSS {
         while (i < items.length && (new Date().getTime() - new Date(items[i].isoDate).getTime() - (config.feedPollrate + fetchTime)) <= 0) {
             const title = items[i].title.replace('Scan - ', '').split(' Chapitre')[0]
             const guilds = await db.getGuildsFollowManga(title);
+            await db.updateMangaList();
             guilds.forEach(guild => {
                 RSS.sendNotifications(guild, items[i], title);
             });
