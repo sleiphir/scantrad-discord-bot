@@ -80,13 +80,15 @@ export class DB {
     async updateMangaList() {
         const mangas = await RSS.getMangas();
 
-        mangas.forEach(async manga => {
-            await prisma.manga.upsert({
-                where: { title: manga },
+        await prisma.$transaction(
+            mangas.map(cur =>
+              prisma.manga.upsert({
+                where: { title: cur },
                 update: {},
-                create: { title: manga },
-            })
-        })
+                create: { title: cur },
+              })
+            )
+          );
     }
 
     async getUserFollowUnique(guild: string, user: string, manga: string) {
