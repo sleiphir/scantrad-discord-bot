@@ -64,15 +64,12 @@ export class RSS {
         const db = new DB();
         // if the notification channel in this server is set
         if(guild.channel_id) {
-            let userList = '';
-            const users = await db.getMangaFollowList(guild.id, manga);
-            users.forEach(user => {
-                userList += `<@${user.id}> `
-            });
-            if (userList !== '') {
+            const users = await (await db.getMangaFollowList(guild.id, manga)).map(user => `<@${user.id}>`);
+            if (users?.length > 0) {
                 const channel: any = RSS.client.channels.cache.get(guild.channel_id);
+                // If the channel exists
                 if (channel) {
-                    console.info(`dispatching notifications to guild(${guild.id}) for ${manga}`);
+                    console.info(`dispatching notifications in guild(${guild.id}) to users[${users.join(', ')}] for manga(${manga})`);
 
                     const title = item.title.replace('Scan - ', '').replace('Chapitre', '');
                     const description = item.contentSnippet.split(`\n`)[1];
@@ -85,7 +82,7 @@ export class RSS {
                     .setImage(image)
                     .setURL(item.link)
                     try {
-                        channel.send(userList);
+                        channel.send(users.join(' '));
                         channel.send(embed);
                     } catch(err) {
                         console.error(err);
@@ -93,7 +90,7 @@ export class RSS {
                 } else {
                     // reset the channel id
                     await db.setChannelId(guild.id, '');
-                    console.warn(`Could not send a notification to channel(${guild.channel_id}) in guild(${guild.id})`);
+                    console.warn(`Could not send notifications in guild(${guild.id}) to channel(${guild.channel_id})`);
                 }
             }
         }

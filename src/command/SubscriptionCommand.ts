@@ -26,7 +26,6 @@ export class SubscriptionCommand extends Command {
             // Partial matches
             } else if (result[0]) {
                 AskUserChoice.send(this.context, result, (candidate) => {
-                    console.info(`${this.context.author.username} is now following '${candidate}'`)
                     db.subscribe(this.context, candidate)
                 })
             }

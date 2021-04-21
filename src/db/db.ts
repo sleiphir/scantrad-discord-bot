@@ -139,6 +139,7 @@ export class DB {
             }
         });
 
+        console.info(`guild(${context.guild.id})[${context.guild.name}] user(${context.author.id})[${context.author.username}] is now following '${manga}'`);
         context.reply(`started following ${manga}`);
     }
 
@@ -162,6 +163,7 @@ export class DB {
             )
         );
 
+        console.info(`guild(${context.guild.id})[${context.guild.name}] user(${context.author.id})[${context.author.username}] unfollowed '${manga}'`);
         context.reply(`unfollowed ${manga}`);
     }
 }
