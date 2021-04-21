@@ -1,0 +1,33 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Guild {
+  id           String         @id
+  channel_id   String         @unique
+  Notification Notification[]
+}
+
+model User {
+  id           String         @id
+  Notification Notification[]
+}
+
+model Manga {
+  title        String         @id
+  Notification Notification[]
+}
+
+model Notification {
+  id         Int    @id @default(autoincrement())
+  users      User[]
+  guild      Guild  @relation(fields: [guildId], references: [id])
+  manga      Manga  @relation(fields: [mangaTitle], references: [title])
+  guildId    String
+  mangaTitle String
+}

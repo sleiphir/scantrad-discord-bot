@@ -5,14 +5,14 @@ const TOKEN = process.env.TOKEN;
 const fs = require('fs');
 const axios = require('axios');
 const cheerio = require('cheerio');
-const Discord = require('discord.js')
+// const Discord = require('discord.js')
 const Fuse = require('fuse.js')
 const Parser = require('rss-parser');
 const parser = new Parser();
-const client = new Discord.Client();
+// const client = new Discord.Client();
 const pollrate = 30000; // frequency in seconds at which the RSS is checked
 const RSS_URL = 'https://scantrad.net/rss/';
-const CMD = "!";
+// const CMD = "!";
 const feed = new Map();
 const fuseOptions = {
     includeScore: true,
@@ -75,18 +75,18 @@ function updateDB() {
     fs.writeFileSync('db.json', JSON.stringify(json));
 }
 
-client.on('ready', () => {
-    console.log(`Logged in as ${client.user.tag}!`);
-    client.user.setActivity("One Piece", { type: "WATCHING"});
-    loadFromDatabase();
-    updateMangaList();
-});
+// client.on('ready', () => {
+//     console.log(`Logged in as ${client.user.tag}!`);
+//     client.user.setActivity("One Piece", { type: "WATCHING"});
+//     loadFromDatabase();
+//     updateMangaList();
+// });
 
-client.on('message', async msg => {
-    if (msg.content.startsWith(CMD)) {
-        processUserInput(msg, msg.content.substr(1,msg.content.length-1), msg.author);
-    }
-});
+// client.on('message', async msg => {
+//     if (msg.content.startsWith(CMD)) {
+//         processUserInput(msg, msg.content.substr(1,msg.content.length-1), msg.author);
+//     }
+// });
 
 function processUserInput(context, input, author) {
     const args = input.split(' ');
