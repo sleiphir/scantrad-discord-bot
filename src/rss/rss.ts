@@ -43,10 +43,16 @@ export class RSS {
     private static async processFeed(items, fetchTime) {
         const db = new DB();
         let i = 0;
-        while (i < items.length && (new Date().getTime() - new Date(items[i].isoDate).getTime() - (config.feedPollrate + fetchTime)) <= 0) {
-            const title = items[i].title.replace('Scan - ', '').split(' Chapitre')[0]
+        while (i < items.length && (new Date().getTime() - new Date(items[i].isoDate).getTime() - (config.rss.feed.pollrate + fetchTime)) <= 0) {
+            // Update the manga list the first time
+            if (i === 0) {
+                await db.updateMangaList();
+            }
+            // Manga title
+            const title = items[i].title.replace('Scan - ', '').split(' Chapitre')[0];
+            // List of guilds that needs to be notificd
             const guilds = await db.getGuildsFollowManga(title);
-            await db.updateMangaList();
+            // Send a message to all the guilds
             guilds.forEach(guild => {
                 RSS.sendNotifications(guild, items[i], title);
             });
@@ -55,8 +61,6 @@ export class RSS {
     }
 
     private static async sendNotifications(guild, item, manga) {
-        console.log(`dispatching notifications to ${guild.id} for ${manga}`);
-        
         const db = new DB();
         // if the notification channel in this server is set
         if(guild.channel_id) {
@@ -67,19 +71,30 @@ export class RSS {
             });
             if (userList !== '') {
                 const channel: any = RSS.client.channels.cache.get(guild.channel_id);
+                if (channel) {
+                    console.info(`dispatching notifications to guild(${guild.id}) for ${manga}`);
 
-                const title = item.title.replace('Scan - ', '').replace('Chapitre', '');
-                const description = item.contentSnippet.split(`\n`)[1];
-                const image = item.content.split("img src=")[1].split('"')[1]
-                const embed = new Discord.MessageEmbed();
-                embed
-                .setColor("#f05a28")
-                .setTitle(title)
-                .setDescription(description)
-                .setImage(image)
-                .setURL(item.link)
-                channel.send(userList)
-                channel.send(embed);
+                    const title = item.title.replace('Scan - ', '').replace('Chapitre', '');
+                    const description = item.contentSnippet.split(`\n`)[1];
+                    const image = item.content.split("img src=")[1].split('"')[1]
+                    const embed = new Discord.MessageEmbed();
+                    embed
+                    .setColor("#f05a28")
+                    .setTitle(title)
+                    .setDescription(description)
+                    .setImage(image)
+                    .setURL(item.link)
+                    try {
+                        channel.send(userList);
+                        channel.send(embed);
+                    } catch(err) {
+                        console.error(err);
+                    }
+                } else {
+                    // reset the channel id
+                    await db.setChannelId(guild.id, '');
+                    console.warn(`Could not send a notification to channel(${guild.channel_id}) in guild(${guild.id})`);
+                }
             }
         }
     }

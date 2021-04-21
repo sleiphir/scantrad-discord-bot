@@ -12,7 +12,10 @@ export class NotificationChannelMiddleware implements IMiddleware {
     async verify() {
         const db = new DB();
         const guild = await db.getGuild(this._context.guild.id)
-        return (guild !== null && guild?.channel_id !== null);
+        if (guild?.channel_id) {
+            return true;
+        }
+        return false;
     }
     
     error() {

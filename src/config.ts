@@ -1,6 +1,20 @@
+import dotenv from 'dotenv'
+
+dotenv.config();
+
 const config = {
-    mangaListPollrate: 86400000,
-    feedPollrate: 30000
+    app: {
+        prefix: "!",
+        token: process.env.TOKEN
+    },
+    rss: {
+        feed: {
+            pollrate: 30000
+        },
+        mangas: {
+            pollrate: 86400000
+        }
+    }
 }
 
 export default config;

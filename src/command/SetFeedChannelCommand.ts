@@ -14,7 +14,6 @@ export class SetFeedChannelCommand extends Command {
     async execute() {
         const db = new DB();
         const guild = await db.setChannelId(this.context.guild.id, this._channel_id);
-        console.log(guild)
-        this.context.channel.send(`Notifications will now be sent to <#${this._channel_id}>`);
+        this.context.channel.send(`Notifications will now be sent to <#${guild.channel_id}>`);
     }
 }

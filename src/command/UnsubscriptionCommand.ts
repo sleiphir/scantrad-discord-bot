@@ -26,7 +26,7 @@ export class UnsubscriptionCommand extends Command {
             // Partial matches
             } else if (result[0]) {
                 AskUserChoice.send(this.context, result, (candidate) => {
-                    console.log(`${this.context.author.username} is unfollowing to '${candidate}'`)
+                    console.info(`${this.context.author.username} unfollowed '${candidate}'`)
                     db.unsubscribe(this.context, candidate)
                 })
             }

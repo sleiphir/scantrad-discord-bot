@@ -9,7 +9,7 @@ generator client {
 
 model Guild {
   id           String         @id
-  channel_id   String         @unique
+  channel_id   String?
   Notification Notification[]
 }
 
