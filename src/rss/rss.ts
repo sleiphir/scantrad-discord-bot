@@ -134,7 +134,7 @@ export class RSS {
                 .setImage(image)
                 .setURL(item.link)
                 try {
-                    channel.send(`${manga} is now available on scantrad.fr`);
+                    channel.send(`${manga} is now available on https://scantrad.net`);
                     channel.send(embed);
                 } catch(err) {
                     console.error(err);
