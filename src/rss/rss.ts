@@ -13,6 +13,8 @@ async function fetchHTML(url) {
 
 export class RSS {
     private static _client: Client;
+    // becomes n*times the pollrate for every consecutive times the RSS cxould not be fetched
+    private static pollrate_delay: number = 0;
     
     static set client(client: Client) {
         RSS._client = client;
@@ -40,10 +42,18 @@ export class RSS {
         try {
             const rss = await parser.parseURL('https://scantrad.net/rss/');
             const end = new Date();
+            // Time for the parser to fetch the rss
             const fetchTime = end.getTime() - start.getTime();
             RSS.processFeed(rss.items, fetchTime);
+            // reset the pollrate_delay as the rss could be fetched this time
+            RSS.pollrate_delay = 0;
         } catch (err) {
-            console.warn(`Could not fetch the RSS at this time, timestamp(${Date.now()}).`)
+            console.error(err);
+            console.warn(`Could not fetch the RSS at this time, timestamp(${Date.now()}).`);
+            // Add the feed pollrate to the pollrate_delay variable in order to fetch
+            // what couldn't be fetched at this time during the next fetch (if any)
+            RSS.pollrate_delay += config.rss.feed.pollrate;
+            console.warn(`Adding ${config.rss.feed.pollrate}ms to the delay, the total pollrate delay is currently ${RSS.pollrate_delay}ms`)
         }
     }
     
@@ -52,7 +62,12 @@ export class RSS {
         let i = 0;
         // While we haven't reached the end of the list
         // And the publish date is within the pollrate duration in (config.ts)
-        while (i < items.length && (new Date().getTime() - new Date(items[i].isoDate).getTime() - (config.rss.feed.pollrate + fetchTime)) <= 0) {
+        const distance = (config.rss.feed.pollrate + fetchTime + RSS.pollrate_delay);
+        // If the total scanning distance is over twice as much as it should (due to previous connection errors)
+        if (distance > 2 * config.rss.feed.pollrate) {
+            console.info(`Connection successful! Looking back ${distance}ms for new RSS content`)
+        }
+        while (i < items.length && (new Date().getTime() - new Date(items[i].isoDate).getTime() - distance) <= 0) {
             // Manga title
             const title = items[i].title.replace('Scan - ', '').split(' Chapitre')[0];
             // If the manga title is in the blacklist, skip it
