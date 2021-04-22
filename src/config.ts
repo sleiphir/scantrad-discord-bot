@@ -10,9 +10,6 @@ const config = {
     rss: {
         feed: {
             pollrate: 30000
-        },
-        mangas: {
-            pollrate: 86400000
         }
     }
 }

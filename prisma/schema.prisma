@@ -8,9 +8,10 @@ generator client {
 }
 
 model Guild {
-  id           String         @id
-  channel_id   String?
-  Notification Notification[]
+  id                          String         @id
+  channel_id                  String?
+  Notification                Notification[]
+  receiveNewMangaNotification Boolean        @default(false)
 }
 
 model User {

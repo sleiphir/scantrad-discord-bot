@@ -12,15 +12,15 @@ async function fetchHTML(url) {
 
 export class RSS {
     private static _client: Client;
-
+    
     static set client(client: Client) {
         RSS._client = client;
     }
-
+    
     static get client() {
         return RSS._client;
     }
-
+    
     static async getMangas(): Promise<string[]> {
         const $ = await fetchHTML("https://scantrad.net/mangas");
         const data = $('body > div.main.m-manga > div > div.h-left > a > div.hm-left > div.hm-info > div.hmi-titre') //  > div.hm-left > div.hm-info > div.hmi-titre
@@ -30,7 +30,7 @@ export class RSS {
         })
         return list.filter(elem => elem !== "Réaliser un chapitre");
     }
-
+    
     static async updateFeed() {
         const parser = new Parser();
         const start = new Date();
@@ -39,27 +39,37 @@ export class RSS {
         const fetchTime = end.getTime() - start.getTime();
         RSS.processFeed(rss.items, fetchTime);
     }
-
+    
     private static async processFeed(items, fetchTime) {
         const db = new DB();
         let i = 0;
+        // While we haven't reached the end of the list
+        // And the publish date is within the pollrate duration in (config.ts)
         while (i < items.length && (new Date().getTime() - new Date(items[i].isoDate).getTime() - (config.rss.feed.pollrate + fetchTime)) <= 0) {
-            // Update the manga list the first time
-            if (i === 0) {
-                await db.updateMangaList();
-            }
             // Manga title
             const title = items[i].title.replace('Scan - ', '').split(' Chapitre')[0];
-            // List of guilds that needs to be notificd
-            const guilds = await db.getGuildsFollowManga(title);
-            // Send a message to all the guilds
-            guilds.forEach(guild => {
-                RSS.sendNotifications(guild, items[i], title);
-            });
+            // Query the manga from the db
+            const manga = await db.getManga(title)
+            // Manga is not in the databse yet
+            if (!manga) {
+                const manga = await db.insertManga(title);
+                const guilds = await db.getGuildsReceivingNewMangaNotifications();
+                guilds.forEach(guild => {
+                    RSS.sendNewMangaNotification(guild, items[i], manga.title);
+                })
+                // Manga is in the database
+            } else {
+                // List of guilds that needs to be notificd
+                const guilds = await db.getGuildsFollowManga(title);
+                // Send a message to all the guilds
+                guilds?.forEach(guild => {
+                    RSS.sendNotifications(guild, items[i], title);
+                });
+            }
             i++;
         }
     }
-
+    
     private static async sendNotifications(guild, item, manga) {
         const db = new DB();
         // if the notification channel in this server is set
@@ -70,7 +80,7 @@ export class RSS {
                 // If the channel exists
                 if (channel) {
                     console.info(`dispatching notifications in guild(${guild.id}) to users[${users.join(', ')}] for manga(${manga})`);
-
+                    
                     const title = item.title.replace('Scan - ', '').replace('Chapitre', '');
                     const description = item.contentSnippet.split(`\n`)[1];
                     const image = item.content.split("img src=")[1].split('"')[1]
@@ -92,6 +102,39 @@ export class RSS {
                     await db.setChannelId(guild.id, '');
                     console.warn(`Could not send notifications in guild(${guild.id}) to channel(${guild.channel_id})`);
                 }
+            }
+        }
+    }
+    
+    private static async sendNewMangaNotification(guild, item, manga) {
+        const db = new DB();
+        // if the notification channel in this server is set
+        if (guild.channel_id) {
+            const channel: any = RSS.client.channels.cache.get(guild.channel_id);
+            // If the channel exists
+            if (channel) {
+                console.info(`dispatching new manga notification in guild(${guild.id}) for manga(${manga})`);
+                
+                const title = item.title.replace('Scan - ', '').replace('Chapitre', '');
+                const description = item.contentSnippet.split(`\n`)[1];
+                const image = item.content.split("img src=")[1].split('"')[1]
+                const embed = new Discord.MessageEmbed();
+                embed
+                .setColor("#7ff028")
+                .setTitle(title)
+                .setDescription(description)
+                .setImage(image)
+                .setURL(item.link)
+                try {
+                    channel.send(`${manga} is now available on scantrad.fr`);
+                    channel.send(embed);
+                } catch(err) {
+                    console.error(err);
+                }
+            } else {
+                // reset the channel id
+                await db.setChannelId(guild.id, '');
+                console.warn(`Could not send notifications in guild(${guild.id}) to channel(${guild.channel_id})`);
             }
         }
     }

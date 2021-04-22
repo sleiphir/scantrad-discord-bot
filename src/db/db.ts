@@ -24,6 +24,19 @@ export class DB {
         return await prisma.guild.findUnique({ where: { id: guild }})
     }
 
+    async getGuildsReceivingNewMangaNotifications() {
+        return await prisma.guild.findMany({ where: { receiveNewMangaNotification: true } });
+    }
+
+    async setGuildReceiveNewMangaNotification(guild: string, value: boolean) {
+        return await prisma.guild.update({
+            where: { id: guild },
+            data: { 
+                receiveNewMangaNotification: value
+            }
+        })
+    }
+
     async getMangaFollowList(guild: string, manga: string) {
         // Get the manga's users from the notifications
         // including only the ones in the current server
@@ -71,6 +84,18 @@ export class DB {
         });
 
         return _user?.Notification;
+    }
+
+    async getManga(manga: string) {
+        return await prisma.manga.findUnique({ where: { title: manga } })
+    }
+
+    async insertManga(manga: string) {
+        return await prisma.manga.upsert({
+            where: { title: manga },
+            update: {},
+            create: { title: manga }
+        });
     }
 
     async getMangas() {
@@ -167,4 +192,3 @@ export class DB {
         context.reply(`unfollowed ${manga}`);
     }
 }
-

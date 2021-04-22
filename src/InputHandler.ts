@@ -1,41 +1,30 @@
 import { Message, User } from "discord.js";
 import { Command } from "./command/Command";
 import { MangaListCommand } from "./command/MangaListCommand";
+import { NewMangaNotificationCommand } from "./command/NewMangaNotificationCommand";
 import { SetFeedChannelCommand } from "./command/SetFeedChannelCommand"
 import { ShowHelperCommand } from "./command/ShowHelperCommand";
 import { ShowUserFollowListCommand } from "./command/ShowUserFollowListCommand";
 import { SubscriptionCommand } from "./command/SubscriptionCommand";
 import { UnsubscriptionCommand } from "./command/UnsubscriptionCommand";
 import { AdminMiddleware } from "./middleware/AdminMiddleware";
+import { contentIsBooleanMiddleware } from "./middleware/ContentIsBooleanMiddleware";
 import { IMiddleware } from "./middleware/IMiddleware";
 import { NotificationChannelMiddleware } from "./middleware/NotificationChannelMiddleware";
 
 export class InputHandler {
     private _context: Message;
-    private _input: string;
-    private _author: User;
 
-    constructor(context: Message, input: string) {
+    constructor(context: Message) {
         this._context = context;
-        this._input = input;
-        this._author = this.context.author;
     }
 
     get context() {
         return this._context;
     }
 
-    get input() {
-        return this._input;
-    }
-
-    get author() {
-        return this._author;
-    }
-
-    process() {
-        const args = this.input.split(' ');
-        const user = this.author.id;
+    process(input) {
+        const args = input.split(' ');
         const command = args.shift();
         const content = args.join(' ');
 
@@ -46,6 +35,12 @@ export class InputHandler {
                     [new AdminMiddleware(this.context.member)]
                 );
                 break;
+            case "newMangaNotification":
+                this.execute(
+                    new NewMangaNotificationCommand(this.context, content),
+                    [new AdminMiddleware(this.context.member), new contentIsBooleanMiddleware(content)]
+                );
+                    break;
             case "help":
                 this.execute(new ShowHelperCommand(this.context));
                 break;

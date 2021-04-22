@@ -18,12 +18,11 @@ client.on('ready', () => {
 
 client.on('message', async msg => {
     if (msg.content.startsWith(config.app.prefix)) {
-        const handler = new InputHandler(msg, msg.content.substr(1,msg.content.length-1));
-        handler.process();
+        const handler = new InputHandler(msg);
+        handler.process(msg.content.substr(config.app.prefix.length,msg.content.length-1));
     }
 });
 
 client.login(config.app.token);
 
-setInterval(db.updateMangaList, config.rss.feed.pollrate);
-setInterval(RSS.updateFeed, config.rss.mangas.pollrate);
+setInterval(RSS.updateFeed, config.rss.feed.pollrate);
