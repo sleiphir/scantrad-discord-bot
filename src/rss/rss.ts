@@ -37,10 +37,14 @@ export class RSS {
     static async updateFeed() {
         const parser = new Parser();
         const start = new Date();
-        const rss = await parser.parseURL('https://scantrad.net/rss/');
-        const end = new Date();
-        const fetchTime = end.getTime() - start.getTime();
-        RSS.processFeed(rss.items, fetchTime);
+        try {
+            const rss = await parser.parseURL('https://scantrad.net/rss/');
+            const end = new Date();
+            const fetchTime = end.getTime() - start.getTime();
+            RSS.processFeed(rss.items, fetchTime);
+        } catch (err) {
+            console.warn(`Could not fetch the RSS at this time, timestamp(${Date.now()}).`)
+        }
     }
     
     private static async processFeed(items, fetchTime) {
