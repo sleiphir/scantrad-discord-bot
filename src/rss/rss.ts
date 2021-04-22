@@ -1,4 +1,4 @@
-import Discord, { Client, GuildChannel, TextChannel } from 'discord.js';
+import Discord, { Channel, Client, GuildChannel, TextChannel } from 'discord.js';
 import axios from 'axios';
 import cheerio, { Cheerio } from 'cheerio';
 import Parser from 'rss-parser';
@@ -119,8 +119,8 @@ export class RSS {
                     .setImage(image)
                     .setURL(item.link)
                     try {
-                        channel.send(users.join(' '));
-                        channel.send(embed);
+                        await channel.send(users.join(' '));
+                        await channel.send(embed);
                     } catch(err) {
                         console.error(err);
                     }
@@ -153,8 +153,8 @@ export class RSS {
                 .setImage(image)
                 .setURL(item.link)
                 try {
-                    channel.send(`${manga} is now available on https://scantrad.net`);
-                    channel.send(embed);
+                    await channel.send(`${manga} is now available on https://scantrad.net`);
+                    await channel.send(embed);
                 } catch(err) {
                     console.error(err);
                 }
