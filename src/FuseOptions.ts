@@ -1,5 +1,6 @@
 export const fuse_options = {
     includeScore: true,
     shouldSort: true,
-    threshold: 0.2
+    useExtendedSearch: true,
+    threshold: 0.2,
 }
