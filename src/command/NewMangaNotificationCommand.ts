@@ -14,9 +14,11 @@ export class NewMangaNotificationCommand extends Command {
         const db = new DB();
         if (this._value) {
             this.context.channel.send(`Notifications for new mangas enabled`);
+            console.info(`guild(${this.context.guild.id})[${this.context.guild.name}] enabled notifications for new mangas`)
             await db.setGuildReceiveNewMangaNotification(this.context.guild.id, true);
         } else {
             this.context.channel.send(`Notifications for new mangas disabled`);
+            console.info(`guild(${this.context.guild.id})[${this.context.guild.name}] disabled notifications for new mangas`)
             await db.setGuildReceiveNewMangaNotification(this.context.guild.id, false);
         }
     }
