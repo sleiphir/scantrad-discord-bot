@@ -98,6 +98,12 @@ export class DB {
         });
     }
 
+    async deleteManga(manga: string) {
+        return await prisma.manga.delete({
+            where: { title: manga }
+        });
+    }
+
     async getMangas() {
         return await prisma.manga.findMany({ where: {} });;
     }

@@ -4,6 +4,7 @@ import cheerio, { Cheerio } from 'cheerio';
 import Parser from 'rss-parser';
 import { DB } from '../db/db';
 import config from '../config';
+import blacklist from './blacklist'
 
 async function fetchHTML(url) {
     const { data } = await axios.get(url)
@@ -23,12 +24,14 @@ export class RSS {
     
     static async getMangas(): Promise<string[]> {
         const $ = await fetchHTML("https://scantrad.net/mangas");
-        const data = $('body > div.main.m-manga > div > div.h-left > a > div.hm-left > div.hm-info > div.hmi-titre') //  > div.hm-left > div.hm-info > div.hmi-titre
-        let list: string[] = [];
-        Array.from(data).forEach(elem => {
-            list = [...list, (elem.children[0] as any).data];
-        })
-        return list.filter(elem => elem !== "Réaliser un chapitre");
+        return Array.from($('.new-manga > .manga > .manga_right > .mr-info > .mri-top'))
+            .map(elem => (elem.children[0] as any).data as string)
+            // filter out the blacklisted elements from the list
+            .filter(title => !(
+                new RegExp(blacklist.join('|'))
+                    .test(title.toLowerCase())
+                )
+            );
     }
     
     static async updateFeed() {
@@ -48,6 +51,11 @@ export class RSS {
         while (i < items.length && (new Date().getTime() - new Date(items[i].isoDate).getTime() - (config.rss.feed.pollrate + fetchTime)) <= 0) {
             // Manga title
             const title = items[i].title.replace('Scan - ', '').split(' Chapitre')[0];
+            // If the manga title is in the blacklist, skip it
+            if (new RegExp(blacklist.join('|')).test(title.toLowerCase())) {
+                console.info(`Manga ${title} was skipped because its title matches with a blacklisted element`)
+                continue;
+            }
             // Query the manga from the db
             const manga = await db.getManga(title)
             // Manga is not in the databse yet
