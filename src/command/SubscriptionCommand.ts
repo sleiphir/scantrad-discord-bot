@@ -1,37 +1,47 @@
 import { Message } from "discord.js";
-import { AskUserChoice } from '../AskUserChoice'
+import { AskUserChoice } from "../AskUserChoice";
 import { Command } from "./Command";
-import Fuse from 'fuse.js'
-import { fuse_options } from '../FuseOptions';
-import { DB } from '../db/db';
+import Fuse from "fuse.js";
+import { fuse_options } from "../FuseOptions";
+import { DB } from "../db/db";
 
 export class SubscriptionCommand extends Command {
-    private _manga: string;
 
-    constructor(context: Message, manga: string) {
-        super(context);
-        this._manga = manga;
+    constructor (message: Message, content: string) {
+        super(message, content);
     }
 
-    async execute() {
+    async execute (): Promise<void> {
         const db = new DB();
         const mangas = await db.getMangas();
-        const fuseMangas = mangas.map(manga => manga.title);
-        const fuse = new Fuse(fuseMangas, fuse_options)
-        const result = fuse.search(this._manga)
-        if (result[0]) {
-            // Perfect match
-            if (result[0].score === 0) {
-                db.subscribe(this.context, result[0].item);
-            // Partial matches
-            } else if (result[0]) {
-                AskUserChoice.send(this.context, result, (candidate) => {
-                    db.subscribe(this.context, candidate)
-                })
-            }
-        // No match
+        const format = mangas.map(manga => manga.title);
+        const fuse = new Fuse(format, fuse_options);
+        const result = fuse.search(this.content);
+
+        if (result?.length === 0) {
+            this.message.reply(`nothing matching '${this.content}' found.`);
+
+            return;
+        }
+
+        // If there is a perfect match
+        if (result.length === 1 && result[0].item.toLowerCase() === this.content.toLowerCase()) {
+            this.subscribe(result[0].item);
         } else {
-            this.context.reply(`nothing matching '${this._manga}' found.`)
+            AskUserChoice.send(this.message, result.map(e => e.item), this.subscribe.bind(this));
+        }
+
+    }
+
+    async subscribe (candidate: string): Promise<void> {
+        const db = new DB();
+        const status = await db.subscribe(this.guild.id, this.user.id, candidate);
+
+        if (status) {
+            console.info(`guild(${this.guild.id})[${this.guild.name}] user(${this.user.id})[${this.user.username}] is now following '${candidate}'`);
+            this.message.reply(`started following ${candidate}`);
+        } else {
+            this.message.reply(`you already follow ${candidate}`);
         }
     }
 }

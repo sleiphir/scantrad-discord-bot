@@ -1,18 +1,19 @@
-import { GuildMember } from 'discord.js';
-import { IMiddleware } from './IMiddleware';
+import { Message } from "discord.js";
+import { Middleware } from "./Middleware";
 
-export class AdminMiddleware implements IMiddleware {
-    private _member: GuildMember
+export class AdminMiddleware extends Middleware {
 
-    constructor(member: GuildMember) {
-        this._member = member;
+    constructor (message: Message, content: string) {
+        super(message, content);
     }
 
-    async verify() {
-        return this._member.hasPermission("ADMINISTRATOR");
+    async verify (): Promise<boolean> {
+        const member = this.message.guild.members.cache.get(this.user.id);
+
+        return member.hasPermission("ADMINISTRATOR");
     }
 
-    error() {
-        return `You need to have administrator privileges in order to run this command.`;
+    error (): string {
+        return "You need to have administrator privileges in order to run this command.";
     }
 }

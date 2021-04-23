@@ -1,16 +1,22 @@
 import { Command } from "./Command";
-import { DB } from '../db/db';
+import { DB } from "../db/db";
+import { Message } from "discord.js";
 
 export class ShowUserFollowListCommand extends Command {
 
-    async execute() {
+    constructor (message: Message, content: string) {
+        super(message, content);
+    }
+
+    async execute (): Promise<void> {
 
         const db = new DB();
-        const list = await db.getUserFollowList(this.context.guild.id, this.context.author.id)
-        if (list?.length > 0) {
-            this.context.reply(`${list.map(elem => elem.mangaTitle).join(', ')}`);
+        const mangas = await db.getUserFollowList(this.guild.id, this.user.id);
+
+        if (mangas?.length > 0) {
+            this.message.reply(`${mangas.map(manga => manga.title).join(", ")}`);
         } else {
-            this.context.reply(`you don't follow anyting yet.`)
+            this.message.reply("you don't follow anyting yet.");
         }
     }
 }

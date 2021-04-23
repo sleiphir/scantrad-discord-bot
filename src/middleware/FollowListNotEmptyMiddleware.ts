@@ -2,7 +2,7 @@ import { Message } from "discord.js";
 import { DB } from "../db/db";
 import { Middleware } from "./Middleware";
 
-export class NotificationChannelMiddleware extends Middleware {
+export class FollowListNotEmptyMiddleware extends Middleware {
 
     constructor (message: Message, content: string) {
         super(message, content);
@@ -10,16 +10,13 @@ export class NotificationChannelMiddleware extends Middleware {
 
     async verify (): Promise<boolean> {
         const db = new DB();
-        const guild = await db.getGuild(this.guild.id);
+        const mangas = await db.getUserFollowList(this.guild.id, this.user.id);
 
-        if (guild?.channel_id) {
-            return true;
-        }
-
-        return false;
+        return mangas?.length > 0;
     }
 
     error (): string {
-        return "_`A notification channel needs to be set`_";
+        return "You don't follow anything yet.";
     }
+
 }

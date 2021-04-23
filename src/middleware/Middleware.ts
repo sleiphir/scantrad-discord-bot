@@ -1,13 +1,13 @@
 import { Guild, Message, User } from "discord.js";
 
-export abstract class Command {
-    public readonly message: Message;
+export abstract class Middleware {
+    protected readonly message: Message;
 
     public readonly user: User;
 
     public readonly guild: Guild;
 
-    public readonly content: string;
+    protected readonly content: string;
 
     constructor (message: Message, content: string) {
         this.message = message;
@@ -16,5 +16,7 @@ export abstract class Command {
         this.content = content;
     }
 
-    abstract execute(): void;
+    abstract verify(): Promise<boolean>;
+
+    abstract error(): string;
 }

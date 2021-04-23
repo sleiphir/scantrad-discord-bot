@@ -1,41 +1,46 @@
 import { Message } from "discord.js";
-import { AskUserChoice } from '../AskUserChoice'
+import { AskUserChoice } from "../AskUserChoice";
 import { Command } from "./Command";
-import Fuse from 'fuse.js'
-import { fuse_options } from '../FuseOptions';
-import { DB } from '../db/db';
+import Fuse from "fuse.js";
+import { fuse_options } from "../FuseOptions";
+import { DB } from "../db/db";
 
 export class UnsubscriptionCommand extends Command {
-    private _manga: string;
 
-    constructor(context: Message, manga: string) {
-        super(context);
-        this._manga = manga;
+    constructor (message: Message, content: string) {
+        super(message, content);
     }
 
-    async execute() {
+    async execute (): Promise<void> {
         const db = new DB();
-        const list = await db.getUserFollowList(this.context.guild.id, this.context.author.id);
-        if (list) {
-            const format = list.map(elem => elem.mangaTitle);
-            const fuse = new Fuse(format, fuse_options)
-            const result = fuse.search(this._manga)
-            if (result[0]) {
-                // Perfect match
-                if (result[0].score === 0) {
-                    db.unsubscribe(this.context, result[0].item as any);
-                // Partial matches
-                } else if (result[0]) {
-                    AskUserChoice.send(this.context, result, (candidate) => {
-                        db.unsubscribe(this.context, candidate)
-                    })
-                }
-            // No match
-            } else {
-                this.context.reply(`nothing matching '${this._manga}' found.`)
-            }
+        const mangas = await db.getUserFollowList(this.guild.id, this.user.id);
+        const format = mangas.map(manga => manga.title);
+        const fuse = new Fuse(format, fuse_options);
+        const result = fuse.search(this.content);
+
+        if (result?.length === 0) {
+            this.message.reply(`nothing matching '${this.content}' found.`);
+
+            return;
+        }
+
+        // If there is a perfect match
+        if (result.length === 1 && result[0].item.toLowerCase() === this.content.toLowerCase()) {
+            this.unsubscribe(result[0].item);
         } else {
-            this.context.reply(`you don't follow anything yet`)
+            AskUserChoice.send(this.message, result.map(e => e.item), this.unsubscribe.bind(this));
+        }
+    }
+
+    async unsubscribe (candidate: string): Promise<void> {
+        const db = new DB();
+        const status = await db.unsubscribe(this.guild.id, this.user.id, candidate);
+
+        if (status) {
+            console.info(`guild(${this.guild.id})[${this.guild.name}] user(${this.user.id})[${this.user.username}] unfollowed '${candidate}'`);
+            this.message.reply(`unfollowed ${candidate}`);
+        } else {
+            this.message.reply(`you don't follow ${candidate}`);
         }
     }
 }

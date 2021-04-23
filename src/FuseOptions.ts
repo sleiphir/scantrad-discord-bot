@@ -3,4 +3,4 @@ export const fuse_options = {
     shouldSort: true,
     useExtendedSearch: true,
     threshold: 0.2,
-}
+};

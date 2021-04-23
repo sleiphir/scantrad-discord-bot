@@ -1,7 +1,13 @@
+import { Message } from "discord.js";
 import { Command } from "./Command";
 
 export class MangaListCommand extends Command {
-    execute(): void {
-        this.context.channel.send('https://scantrad.net/mangas');
+
+    constructor (message: Message, content: string) {
+        super(message, content);
+    }
+
+    execute (): void {
+        this.message.channel.send("https://scantrad.net/mangas");
     }
 }

@@ -1,200 +1,180 @@
-import { RSS } from '../rss/rss';
-import { Message } from 'discord.js';
-import { PrismaClient } from '@prisma/client'
+import { RSS } from "../rss/rss";
+import { PrismaClient, Guild, User, Manga, Prisma } from "@prisma/client";
 
 // Unique prisma connection
 const prisma = new PrismaClient();
 
 export class DB {
 
-    async setChannelId (guild: string, channel_id: string) {
-        return await prisma.guild.upsert({
-            where: { id: guild },
+    async setChannelId (guild: string, channel_id: string): Promise<Guild> {
+        return prisma.guild.upsert({
+            where: { id: guild, },
             update: {
-                channel_id: channel_id
+                channel_id: channel_id,
             },
             create: {
                 id: guild,
-                channel_id: channel_id
-            }
+                channel_id: channel_id,
+            },
         });
     }
 
-    async getGuild (guild: string) {
-        return await prisma.guild.findUnique({ where: { id: guild }})
+    async getGuild (guild: string): Promise<Guild> {
+        return prisma.guild.findUnique({ where: { id: guild, }, });
     }
 
-    async getGuildsReceivingNewMangaNotifications() {
-        return await prisma.guild.findMany({ where: { receiveNewMangaNotification: true } });
+    async getGuildsReceivingNewMangaNotifications (): Promise<Guild[]> {
+
+        return prisma.guild.findMany({
+            where: {
+                receiveNewMangaNotification: true,
+            },
+        });
     }
 
-    async setGuildReceiveNewMangaNotification(guild: string, value: boolean) {
-        return await prisma.guild.update({
-            where: { id: guild },
-            data: { 
-                receiveNewMangaNotification: value
-            }
-        })
+    async setGuildReceiveNewMangaNotification (guild: string, value: boolean): Promise<Guild> {
+
+        return prisma.guild.update({
+            where: { id: guild, },
+            data: {
+                receiveNewMangaNotification: value,
+            },
+        });
     }
 
-    async getMangaFollowList(guild: string, manga: string) {
-        // Get the manga's users from the notifications
-        // including only the ones in the current server
-        const _manga = await prisma.manga.findUnique({
-            where: { title: manga },
-            include: {
+    async getMangaFollowList (guild: string, manga: string): Promise<User[]> {
+
+        return prisma.user.findMany({
+            where: {
                 Notification: {
-                    where: { guildId: guild },
-                    include: {
-                        users: true
-                    }
+                    some: {
+                        guildId: guild,
+                        mangaTitle: manga,
+                    },
                 },
             },
         });
-
-        return _manga?.Notification[0]?.users;
     }
 
-    async getGuildsFollowManga(manga: string) {
-        // Get the manga's guild
-        const _manga = await prisma.manga.findUnique({
-            where: { title: manga },
-            include: {
+    async getGuildsFollowManga (manga: string): Promise <Guild[]> {
+
+        return prisma.guild.findMany({
+            where: {
                 Notification: {
-                    include: {
-                        guild: true
-                    }
+                    some: {
+                        mangaTitle: manga,
+                    },
                 },
             },
         });
-
-        return _manga?.Notification?.map(elem => elem.guild);
     }
 
-    async getUserFollowList(guild: string, user: string) {
-        // Get the user's manga from the notifications
-        // including only the ones in the current server
-        const _user = await prisma.user.findUnique({
-            where: { id: user },
-            include: {
+    async getUserFollowList (guild: string, user: string): Promise<Manga[]> {
+
+        return prisma.manga.findMany({
+            where: {
                 Notification: {
-                    where: { guildId: guild },
+                    some: {
+                        guildId: guild,
+                        users: {
+                            some: {
+                                id: user,
+                            },
+                        },
+                    },
                 },
             },
         });
-
-        return _user?.Notification;
     }
 
-    async getManga(manga: string) {
-        return await prisma.manga.findUnique({ where: { title: manga } })
+    async getManga (manga: string): Promise<Manga> {
+        return prisma.manga.findUnique({ where: { title: manga, }, });
     }
 
-    async insertManga(manga: string) {
-        return await prisma.manga.upsert({
-            where: { title: manga },
+    async insertManga (manga: string): Promise<Manga> {
+        return prisma.manga.upsert({
+            where: { title: manga, },
             update: {},
-            create: { title: manga }
+            create: { title: manga, },
         });
     }
 
-    async deleteManga(manga: string) {
-        return await prisma.manga.delete({
-            where: { title: manga }
+    async deleteManga (manga: string): Promise<Manga> {
+        return prisma.manga.delete({
+            where: { title: manga, },
         });
     }
 
-    async getMangas() {
-        return await prisma.manga.findMany({ where: {} });;
+    async getMangas (): Promise<Manga[]> {
+        return prisma.manga.findMany({ where: {}, });
     }
 
-    async updateMangaList() {
+    async updateMangaList (): Promise<Manga[]> {
         const mangas = await RSS.getMangas();
 
-        await prisma.$transaction(
+        return prisma.$transaction(
             mangas.map(cur =>
                 prisma.manga.upsert({
-                    where: { title: cur },
+                    where: { title: cur, },
                     update: {},
-                    create: { title: cur },
-                })
-            )
+                    create: { title: cur, },
+                }))
         );
     }
 
-    async getUserFollowUnique(guild: string, user: string, manga: string) {
-        return await prisma.user.findUnique({
-            where: { id: user },
-            include: {
-                Notification: {
-                    where: {
-                        AND: [{ guildId: guild }, { mangaTitle: manga }]
-                    }
-                }
-            },
-        });
-    }
+    async subscribe (guild: string, user: string, manga: string): Promise<User> {
 
-    async subscribe(context: Message, manga: string) {
-        const user = context.author.id;
-        const guild = context.guild.id;
+        const followList = await this.getUserFollowList(guild, user);
 
-        // Check if the notification already exists for this user
-        const _user = await this.getUserFollowUnique(guild, user, manga);
-
-        if (_user?.Notification?.length > 0) {
-            context.reply(`you already follow ${manga}.`);
-            return;
+        // The user already follows this manga
+        if (followList.some(e => e.title === manga)) {
+            return null;
         }
 
         // Find or create the user
         // Then add the notification
-        await prisma.user.upsert({
-            where: { id: user },
+        return prisma.user.upsert({
+            where: { id: user, },
             update: {
                 Notification: {
                     create: {
-                        guild: { connect: { id: context.guild.id }},
-                        manga: { connect: { title: manga }},
-                    }
-                }
+                        guild: { connect: { id: guild, }, },
+                        manga: { connect: { title: manga, }, },
+                    },
+                },
             },
             create: {
                 id: user,
                 Notification: {
                     create: {
-                        guild: { connect: { id: context.guild.id }},
-                        manga: { connect: { title: manga }},
-                    }
-                }
-            }
+                        guild: { connect: { id: guild, }, },
+                        manga: { connect: { title: manga, }, },
+                    },
+                },
+            },
+            include: {
+                Notification: true,
+            },
         });
-
-        console.info(`guild(${context.guild.id})[${context.guild.name}] user(${context.author.id})[${context.author.username}] is now following '${manga}'`);
-        context.reply(`started following ${manga}`);
     }
 
-    async unsubscribe(context: Message, manga: string) {
-        const user = context.author.id;
-        const guild = context.guild.id;
+    async unsubscribe (guild: string, user: string, manga: string): Promise<Prisma.BatchPayload> {
+        const followList = await this.getUserFollowList(guild, user);
 
-        const _user = await this.getUserFollowUnique(guild, user, manga);
-
-        if (_user?.Notification?.length === 0) {
-            context.reply(`you don't follow ${manga}.`);
-            return;
+        // If the manga isn't in the user follow list
+        if (!followList.some(e => e.title === manga)) {
+            return null;
         }
 
-        // Deletes every corresponding notifications
-        await prisma.$transaction(
-            _user.Notification.map(cur =>
-                prisma.notification.delete({
-                    where: { id: cur.id }
-                })
-            )
-        );
-
-        console.info(`guild(${context.guild.id})[${context.guild.name}] user(${context.author.id})[${context.author.username}] unfollowed '${manga}'`);
-        context.reply(`unfollowed ${manga}`);
+        return prisma.notification.deleteMany({
+            where: {
+                mangaTitle: manga,
+                users: {
+                    some: {
+                        id: user,
+                    },
+                },
+            },
+        });
     }
 }
