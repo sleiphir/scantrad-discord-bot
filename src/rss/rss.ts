@@ -123,7 +123,7 @@ export class RSS {
 
         const channel = await RSS.getChannelId(guild);
 
-        const title = item.title.replace("Scan - ", "").replace("Chapitre", "");
+        const title = item.title.replace("Scan - ", "").replace("Chapitre ", "");
         const description = item.contentSnippet.split("\n")[1];
         const image = item.content.split("img src=")[1].split("\"")[1];
 
@@ -173,7 +173,7 @@ export class RSS {
             console.info(`dispatching notification in channel(${channel.id})`);
             await channel.send(message);
         } catch {
-            console.error(`I don't have the permission to write in this channel(${channel?.id}`);
+            console.error(`I don't have the permission to write in this channel(${channel?.id})`);
             RSS.resetChannelId(guild);
         }
     }
