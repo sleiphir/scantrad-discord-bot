@@ -9,7 +9,7 @@ const config = {
     },
     rss: {
         feed: {
-            pollrate: 27000000,
+            pollrate: 30000,
         },
     },
 };
