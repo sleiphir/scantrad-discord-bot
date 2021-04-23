@@ -2,7 +2,7 @@ import { Message } from "discord.js";
 import { AskUserChoice } from "../AskUserChoice";
 import { Command } from "./Command";
 import Fuse from "fuse.js";
-import { fuse_options } from "../FuseOptions";
+import { fuseOptions } from "../FuseOptions";
 import { DB } from "../db/db";
 
 export class SubscriptionCommand extends Command {
@@ -15,7 +15,7 @@ export class SubscriptionCommand extends Command {
         const db = new DB();
         const mangas = await db.getMangas();
         const format = mangas.map(manga => manga.title);
-        const fuse = new Fuse(format, fuse_options);
+        const fuse = new Fuse(format, fuseOptions);
         const result = fuse.search(this.content);
 
         if (result?.length === 0) {

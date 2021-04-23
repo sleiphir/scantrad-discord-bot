@@ -14,17 +14,17 @@ export class CommandHandler {
 
     async process (command: Command): Promise<void> {
 
-        let middleware_list = [];
+        let middlewareList = [];
 
         middlewares[command.constructor.name].forEach(middleware => {
-            middleware_list = [
-                ...middleware_list,
+            middlewareList = [
+                ...middlewareList,
                 new middleware(this.message, command.content)
             ];
         });
 
-        const authorized = middleware_list.length > 0
-            ? await this.checkMiddlewares(middleware_list)
+        const authorized = middlewareList.length > 0
+            ? await this.checkMiddlewares(middlewareList)
             : true;
 
         if (authorized) {

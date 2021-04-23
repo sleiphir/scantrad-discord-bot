@@ -17,7 +17,7 @@ export class RSS {
     static client: Client;
 
     // becomes n times the pollrate for every consecutive times the RSS cxould not be fetched
-    private static pollrate_delay = 0;
+    private static pollrateDelay = 0;
 
     static async getMangas (): Promise<string[]> {
         const $ = await fetchHTML("https://scantrad.net/mangas");
@@ -46,24 +46,28 @@ export class RSS {
 
             RSS.processFeed(rss.items, fetchTime);
 
-            // reset the pollrate_delay as the rss could be fetched this time
-            RSS.pollrate_delay = 0;
+            // reset the pollrateDelay as the rss could be fetched this time
+            RSS.pollrateDelay = 0;
         } catch {
             console.warn(`Could not fetch the RSS at this time, timestamp(${Date.now()}).`);
 
-            // Add the feed pollrate to the pollrate_delay variable in order to fetch
-            // what couldn't be fetched at this time during the next fetch (if any)
-            RSS.pollrate_delay += config.rss.feed.pollrate;
-            console.warn(`Adding ${config.rss.feed.pollrate}ms to the delay, the total pollrate delay is currently ${RSS.pollrate_delay}ms`);
+            /*
+             * Add the feed pollrate to the pollrateDelay variable in order to fetch
+             * what couldn't be fetched at this time during the next fetch (if any)
+             */
+            RSS.pollrateDelay += config.rss.feed.pollrate;
+            console.warn(`Adding ${config.rss.feed.pollrate}ms to the delay, the total pollrate delay is currently ${RSS.pollrateDelay}ms`);
         }
     }
 
     private static async processFeed (items, fetchTime): Promise<void> {
         let i = 0;
 
-        // While we haven't reached the end of the list
-        // And the publish date is within the pollrate duration in (config.ts)
-        const distance = (config.rss.feed.pollrate + fetchTime + RSS.pollrate_delay);
+        /*
+         * While we haven't reached the end of the list
+         * And the publish date is within the pollrate duration in (config.ts)
+         */
+        const distance = (config.rss.feed.pollrate + fetchTime + RSS.pollrateDelay);
 
         // If the total scanning distance is over twice as much as it should (due to previous connection errors)
         if (distance > 2 * config.rss.feed.pollrate) {
