@@ -19,6 +19,7 @@ export class AskUserChoice {
                         if (candidate) {
                             callback(candidate);
                         }
+
                         message.delete();
                         msg.delete();
                     })

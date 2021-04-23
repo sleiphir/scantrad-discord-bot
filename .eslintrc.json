@@ -99,6 +99,13 @@
         "eol-last": ["error", "always"],
         "max-depth": ["error", 4],
         "max-lines": "warn",
-        "multiline-comment-style": ["error", "starred-block"]
+        "multiline-comment-style": ["error", "starred-block"],
+        "padding-line-between-statements": [
+            "error", {
+                "blankLine": "always",
+                "prev": "multiline-block-like",
+                "next": "*"
+            }
+        ]
     }
 }
