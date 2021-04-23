@@ -2,7 +2,7 @@ import { Message } from "discord.js";
 
 export class AskUserChoice {
     static send (message: Message, choices: string[], callback: { (candidate: string): void }): void {
-        const list = choices.map((elem, idx) => { return `[${idx+1}] ${elem}`;});
+        const list = choices.map((elem, idx) => { return `[${idx + 1}] ${elem}`;});
         const filter = (m: Message) => m.author.id === message.author.id;
 
         message.channel.send(`\`\`\`ml\n${list.join("\n")}\n\n[0] Cancel\`\`\`\n\`\`\`Type the [number] of your choice in response\`\`\``)

@@ -8,7 +8,7 @@ export class DB {
 
     async setChannelId (guild: string, channelId: string): Promise<Guild> {
         return prisma.guild.upsert({
-            where: { id: guild, },
+            where: { id: guild },
             update: {
                 // eslint-disable-next-line camelcase
                 channel_id: channelId,
@@ -22,19 +22,19 @@ export class DB {
     }
 
     async getGuild (guild: string): Promise<Guild> {
-        return prisma.guild.findUnique({ where: { id: guild, }, });
+        return prisma.guild.findUnique({ where: { id: guild } });
     }
 
     async getGuildsReceivingNewMangaNotifications (): Promise<Guild[]> {
 
-        return prisma.guild.findMany({ where: { receiveNewMangaNotification: true, }, });
+        return prisma.guild.findMany({ where: { receiveNewMangaNotification: true } });
     }
 
     async setGuildReceiveNewMangaNotification (guild: string, value: boolean): Promise<Guild> {
 
         return prisma.guild.update({
-            where: { id: guild, },
-            data: { receiveNewMangaNotification: value, },
+            where: { id: guild },
+            data: { receiveNewMangaNotification: value },
         });
     }
 
@@ -54,7 +54,7 @@ export class DB {
 
     async getGuildsFollowManga (manga: string): Promise <Guild[]> {
 
-        return prisma.guild.findMany({ where: { Notification: { some: { mangaTitle: manga, }, }, }, });
+        return prisma.guild.findMany({ where: { Notification: { some: { mangaTitle: manga } } } });
     }
 
     async getUserFollowList (guild: string, user: string): Promise<Manga[]> {
@@ -64,7 +64,7 @@ export class DB {
                 Notification: {
                     some: {
                         guildId: guild,
-                        users: { some: { id: user, }, },
+                        users: { some: { id: user } },
                     },
                 },
             },
@@ -72,23 +72,23 @@ export class DB {
     }
 
     async getManga (manga: string): Promise<Manga> {
-        return prisma.manga.findUnique({ where: { title: manga, }, });
+        return prisma.manga.findUnique({ where: { title: manga } });
     }
 
     async insertManga (manga: string): Promise<Manga> {
         return prisma.manga.upsert({
-            where: { title: manga, },
+            where: { title: manga },
             update: {},
-            create: { title: manga, },
+            create: { title: manga },
         });
     }
 
     async deleteManga (manga: string): Promise<Manga> {
-        return prisma.manga.delete({ where: { title: manga, }, });
+        return prisma.manga.delete({ where: { title: manga } });
     }
 
     async getMangas (): Promise<Manga[]> {
-        return prisma.manga.findMany({ where: {}, });
+        return prisma.manga.findMany({ where: {} });
     }
 
     async updateMangaList (): Promise<Manga[]> {
@@ -97,9 +97,9 @@ export class DB {
         return prisma.$transaction(
             mangas.map(cur =>
                 prisma.manga.upsert({
-                    where: { title: cur, },
+                    where: { title: cur },
                     update: {},
-                    create: { title: cur, },
+                    create: { title: cur },
                 }))
         );
     }
@@ -115,12 +115,12 @@ export class DB {
 
         // Find or create the user, then add the notification
         return prisma.user.upsert({
-            where: { id: user, },
+            where: { id: user },
             update: {
                 Notification: {
                     create: {
-                        guild: { connect: { id: guild, }, },
-                        manga: { connect: { title: manga, }, },
+                        guild: { connect: { id: guild } },
+                        manga: { connect: { title: manga } },
                     },
                 },
             },
@@ -128,12 +128,12 @@ export class DB {
                 id: user,
                 Notification: {
                     create: {
-                        guild: { connect: { id: guild, }, },
-                        manga: { connect: { title: manga, }, },
+                        guild: { connect: { id: guild } },
+                        manga: { connect: { title: manga } },
                     },
                 },
             },
-            include: { Notification: true, },
+            include: { Notification: true },
         });
     }
 
@@ -148,7 +148,7 @@ export class DB {
         return prisma.notification.deleteMany({
             where: {
                 mangaTitle: manga,
-                users: { some: { id: user, }, },
+                users: { some: { id: user } },
             },
         });
     }

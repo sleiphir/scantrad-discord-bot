@@ -8,7 +8,7 @@ import blacklist from "./blacklist";
 import { Guild } from ".prisma/client";
 
 async function fetchHTML (url) {
-    const { data, } = await axios.get(url);
+    const { data } = await axios.get(url);
 
     return cheerio.load(data);
 }

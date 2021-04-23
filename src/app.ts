@@ -13,7 +13,7 @@ db.updateMangaList();
 
 client.on("ready", () => {
     console.info(`Logged in as ${client.user.tag}!`);
-    client.user.setActivity("One Piece", { type: "WATCHING", });
+    client.user.setActivity("One Piece", { type: "WATCHING" });
     RSS.client = client;
     RSS.updateFeed();
 });
@@ -21,7 +21,7 @@ client.on("ready", () => {
 client.on("message", async msg => {
     if (msg.content.startsWith(config.app.prefix)) {
         const handler = new InputHandler(msg);
-        const command = handler.process(msg.content.substr(config.app.prefix.length, msg.content.length-1));
+        const command = handler.process(msg.content.substr(config.app.prefix.length, msg.content.length - 1));
 
         if (command) {
             const commandHandler = new CommandHandler(msg);

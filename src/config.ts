@@ -7,7 +7,7 @@ const config = {
         prefix: "!",
         token: process.env.TOKEN,
     },
-    rss: { feed: { pollrate: 30000, }, },
+    rss: { feed: { pollrate: 30000 } },
 };
 
 export default config;
